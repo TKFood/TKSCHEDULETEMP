@@ -23,6 +23,9 @@ namespace TKSCHEDULETEMP
 {
     public partial class FrmSCHEDULE : Form
     {
+        int CommandTimeout = 60;
+        int BulkCopyTimeout = 60;
+
         public FrmSCHEDULE()
         {
             InitializeComponent();
@@ -93,53 +96,88 @@ namespace TKSCHEDULETEMP
                 sqlsb.Password = TKID.Decryption(sqlsb.Password);
                 sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
 
-                using (SqlConnection conn = new SqlConnection(sqlsb.ConnectionString))
+                SQL.Clear();
+
+                if (IsLinkedServerAlive(IP, DBNAME))
                 {
-                    SQL.AppendFormat(@"
+                    using (SqlConnection conn = new SqlConnection(sqlsb.ConnectionString))
+                    {
+                        SQL.AppendFormat(@"
                                     SELECT *
-                                    FROM [192.168.1.131].[COSMOS_POS].dbo.POSTB WITH(NOLOCK)
+                                    FROM [{0}].[{1}].dbo.POSTB WITH(NOLOCK)
                                     WHERE TB001 + TB002 + TB003 + TB006 + TB007 NOT IN 
                                     (
                                         SELECT TB001 + TB002 + TB003 + TB006 + TB007 
                                         FROM [TKPOSTEMP].[dbo].[POSTB]
                                     )
-                                    AND TB001 >= '20250715'
-                                        ");
+                                    AND TB001 >= '20250716'
+                                        ", IP, DBNAME);
 
-                    using (SqlCommand cmd = new SqlCommand(SQL.ToString(), conn))
-                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
-                    {
-                        DataTable dt = new DataTable();
-                        da.Fill(dt);
-
-                        if (dt.Rows.Count > 0)
+                        using (SqlCommand cmd = new SqlCommand(SQL.ToString(), conn))
+                        using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                         {
-                            // Step 3: SqlBulkCopy 進行整批寫入
-                            using (SqlBulkCopy bulkCopy = new SqlBulkCopy(conn))
+                            cmd.CommandTimeout = CommandTimeout; // 查詢 timeout
+                            DataTable dt = new DataTable();
+                            da.Fill(dt);
+
+                            if (dt.Rows.Count > 0)
                             {
-                                bulkCopy.DestinationTableName = "[TKPOSTEMP].[dbo].[POSTB]";
-                                bulkCopy.BatchSize = 1000; // 每次一千筆
-                                bulkCopy.BulkCopyTimeout = 60;
-
-                                // 自動對應欄位（欄位名稱相同會自動對應）
-                                foreach (DataColumn col in dt.Columns)
+                                // Step 3: SqlBulkCopy 進行整批寫入
+                                using (SqlBulkCopy bulkCopy = new SqlBulkCopy(conn))
                                 {
-                                    bulkCopy.ColumnMappings.Add(col.ColumnName, col.ColumnName);
+                                    bulkCopy.DestinationTableName = "[TKPOSTEMP].[dbo].[POSTB]";
+                                    bulkCopy.BatchSize = 1000; // 每次一千筆
+                                    bulkCopy.BulkCopyTimeout = BulkCopyTimeout;
+
+                                    // 自動對應欄位（欄位名稱相同會自動對應）
+                                    foreach (DataColumn col in dt.Columns)
+                                    {
+                                        bulkCopy.ColumnMappings.Add(col.ColumnName, col.ColumnName);
+                                    }
+
+                                    conn.Open();
+                                    bulkCopy.WriteToServer(dt);
+                                    conn.Close();
+
+                                    //MessageBox.Show($"成功寫入 {dt.Rows.Count} 筆資料！");
                                 }
-
-                                conn.Open();
-                                bulkCopy.WriteToServer(dt);
-                                conn.Close();
-
-                                //MessageBox.Show($"成功寫入 {dt.Rows.Count} 筆資料！");
                             }
-                        }
-                        else
-                        {
-                            MessageBox.Show("無需寫入，無新資料。");
+                            else
+                            {
+                                //MessageBox.Show("無需寫入，無新資料。");
+                            }
                         }
                     }
                 }
+                    
+            }
+        }
+
+        //測試linkedserver是否連線
+        public bool IsLinkedServerAlive(string linkedServer, string dbName)
+        {
+            string testSql = $@"SELECT TOP 1 1 FROM [{linkedServer}].[{dbName}].dbo.POSTB WITH(NOLOCK)";
+
+            try
+            {
+                // 使用主機本機 SQL Server 連線
+                Class1 TKID = new Class1();
+                SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKPOSTEMP"].ConnectionString);
+                sqlsb.Password = TKID.Decryption(sqlsb.Password);
+                sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
+
+                using (SqlConnection conn = new SqlConnection(sqlsb.ConnectionString))
+                using (SqlCommand cmd = new SqlCommand(testSql, conn))
+                {
+                    cmd.CommandTimeout = 3; // 最多等 3 秒
+                    conn.Open();
+                    var result = cmd.ExecuteScalar();
+                    return true;
+                }
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -153,6 +191,8 @@ namespace TKSCHEDULETEMP
             if (DT != null)
             {               
                 ADD_TKPOSTEMP(DT);
+
+                MessageBox.Show("完成");
             }
             else
             {

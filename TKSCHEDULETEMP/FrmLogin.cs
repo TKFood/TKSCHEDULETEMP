@@ -43,67 +43,52 @@ namespace TKSCHEDULETEMP
         #region LOGIN
         public void LOGIN()
         {
-            if (txt_UserName.Text == "" || txt_Password.Text == "")
+            if (string.IsNullOrWhiteSpace(txt_UserName.Text) || string.IsNullOrWhiteSpace(txt_Password.Text))
             {
                 MessageBox.Show("請輸入帳號、密碼");
                 return;
             }
+
             try
             {
-                //Create SqlConnection
-                //String connectionString;
-                SqlConnection conn;
-                //connectionString = ConfigurationManager.ConnectionStrings["dbconn"].ConnectionString;
-                //conn = new SqlConnection(connectionString);
-
-                //20210902密
-                Class1 TKID = new Class1();//用new 建立類別實體
+                // 解密連線字串
+                Class1 TKID = new Class1();
                 SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKMK"].ConnectionString);
-
-                //資料庫使用者密碼解密
                 sqlsb.Password = TKID.Decryption(sqlsb.Password);
                 sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
 
-                String connectionString;
-                conn = new SqlConnection(sqlsb.ConnectionString);
-
-                SqlCommand cmd = new SqlCommand("Select * from MNU_Login where UserName=@username and Password=@password", conn);
-                cmd.Parameters.AddWithValue("@username", txt_UserName.Text);
-                cmd.Parameters.AddWithValue("@password", txt_Password.Text);
-                conn.Open();
-                SqlDataAdapter adapt = new SqlDataAdapter(cmd);
-                DataSet ds = new DataSet();
-                adapt.Fill(ds);
-                conn.Close();
-                int count = ds.Tables[0].Rows.Count;
-                //If count is equal to 1, than show frmMain form
-                if (count == 1)
+                using (SqlConnection conn = new SqlConnection(sqlsb.ConnectionString))
                 {
-                    //ADD USED LOG
-                    List<string> IPAddress = GetHostIPAddress();
-                    //MessageBox.Show(IPAddress[0].ToString());    
-                    ADDTKSYSLOGIN(MethodBase.GetCurrentMethod().DeclaringType.Namespace, txt_UserName.Text.Trim(), IPAddress[0].ToString(), "SUCCESS");
+                    string sql = @"SELECT COUNT(*) FROM MNU_Login WHERE UserName=@username AND Password=@password";
+                    using (SqlCommand cmd = new SqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.Add("@username", SqlDbType.NVarChar).Value = txt_UserName.Text.Trim();
+                        cmd.Parameters.Add("@password", SqlDbType.NVarChar).Value = txt_Password.Text.Trim();
 
-                    //MessageBox.Show("登入成功!");
+                        conn.Open();
+                        int count = (int)cmd.ExecuteScalar();
 
-                    FrmParent fm = new FrmParent(txt_UserName.Text.ToString());
-                    fm.Show();
-                    this.Hide();
-                }
-                else
-                {
-                    //ADD USED LOG
-                    List<string> IPAddress = GetHostIPAddress();
-                    //MessageBox.Show(IPAddress[0].ToString());    
-                    ADDTKSYSLOGIN(MethodBase.GetCurrentMethod().DeclaringType.Namespace, txt_UserName.Text.Trim(), IPAddress[0].ToString(), "FAIL");
+                        List<string> IPAddress = GetHostIPAddress();
+                        string result = (count == 1) ? "SUCCESS" : "FAIL";
 
-                    MessageBox.Show("登入失敗!");
+                        ADDTKSYSLOGIN(MethodBase.GetCurrentMethod().DeclaringType.Namespace, txt_UserName.Text.Trim(), IPAddress[0], result);
 
+                        if (count == 1)
+                        {
+                            FrmParent fm = new FrmParent(txt_UserName.Text.Trim());
+                            fm.Show();
+                            this.Hide();
+                        }
+                        else
+                        {
+                            MessageBox.Show("登入失敗!");
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                MessageBox.Show("錯誤：" + ex.Message);
             }
         }
 

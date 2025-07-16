@@ -186,70 +186,43 @@ namespace TKSCHEDULETEMP
 
         public void TKSYSPRUSED(string SYSTEMNAME, string PROGRAMCODE, string PROGRAMNAME, string USEDID, string USEDIP)
         {
-            SqlConnection sqlConn = new SqlConnection();
-            SqlTransaction tran;
-            SqlCommand cmd = new SqlCommand();
-            int result;
-            StringBuilder sbSql = new StringBuilder();
-
-
-            //20210902密
-            Class1 TKID = new Class1();//用new 建立類別實體
-            SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKMK"].ConnectionString);
-
-            //資料庫使用者密碼解密
-            sqlsb.Password = TKID.Decryption(sqlsb.Password);
-            sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
-
-            String connectionString;
-            sqlConn = new SqlConnection(sqlsb.ConnectionString);
-
-
-            sqlConn.Close();
-            sqlConn.Open();
-            tran = sqlConn.BeginTransaction();
-
-            sbSql.Clear();
-
-
-
-            sbSql.AppendFormat(@" 
-                                INSERT INTO [TKIT].[dbo].[TKSYSPRUSED]
-                                ([SYSTEMNAME],[PROGRAMCODE],[PROGRAMNAME],[USEDDATES],[USEDID],[USEDIP])
-                                VALUES
-                                (@SYSTEMNAME,@PROGRAMCODE,@PROGRAMNAME,@USEDDATES,@USEDID,@USEDIP)
-                                ");
-
-
-            using (SqlConnection connection = new SqlConnection(sqlsb.ConnectionString))
+            try
             {
-                SqlCommand command = new SqlCommand(sbSql.ToString(), connection);
-                command.Parameters.AddWithValue("@SYSTEMNAME", SYSTEMNAME);
-                command.Parameters.AddWithValue("@PROGRAMCODE", PROGRAMCODE);
-                command.Parameters.AddWithValue("@PROGRAMNAME", PROGRAMNAME);
-                command.Parameters.AddWithValue("@USEDDATES", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"));
-                command.Parameters.AddWithValue("@USEDID", USEDID);
-                command.Parameters.AddWithValue("@USEDIP", USEDIP);
+                // 解密連線字串
+                Class1 TKID = new Class1();
+                SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKMK"].ConnectionString);
+                sqlsb.Password = TKID.Decryption(sqlsb.Password);
+                sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
 
-                try
+                using (SqlConnection conn = new SqlConnection(sqlsb.ConnectionString))
                 {
-                    connection.Open();
-                    Int32 rowsAffected = command.ExecuteNonQuery();
+                    string sql = @"
+                                INSERT INTO [TKIT].[dbo].[TKSYSPRUSED]
+                                ([SYSTEMNAME], [PROGRAMCODE], [PROGRAMNAME], [USEDDATES], [USEDID], [USEDIP])
+                                VALUES
+                                (@SYSTEMNAME, @PROGRAMCODE, @PROGRAMNAME, @USEDDATES, @USEDID, @USEDIP)
+            ";
 
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
+                    using (SqlCommand cmd = new SqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.Add("@SYSTEMNAME", SqlDbType.NVarChar).Value = SYSTEMNAME;
+                        cmd.Parameters.Add("@PROGRAMCODE", SqlDbType.NVarChar).Value = PROGRAMCODE;
+                        cmd.Parameters.Add("@PROGRAMNAME", SqlDbType.NVarChar).Value = PROGRAMNAME;
+                        cmd.Parameters.Add("@USEDDATES", SqlDbType.NVarChar).Value = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+                        cmd.Parameters.Add("@USEDID", SqlDbType.NVarChar).Value = USEDID;
+                        cmd.Parameters.Add("@USEDIP", SqlDbType.NVarChar).Value = USEDIP;
 
-                finally
-                {
-                    sqlConn.Close();
+                        conn.Open();
+                        cmd.ExecuteNonQuery();
+                    }
                 }
             }
-
-
+            catch (Exception ex)
+            {
+                MessageBox.Show("寫入程式使用記錄失敗：" + ex.Message);
+            }
         }
+
 
         // <summary>
         /// 取得本機 IP Address

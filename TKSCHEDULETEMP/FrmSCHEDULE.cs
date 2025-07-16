@@ -78,10 +78,10 @@ namespace TKSCHEDULETEMP
             }
         }
         /// <summary>
-        /// 新增pos資料，到TKPOSTEMP
+        /// 新增POSTA資料，到TKPOSTEMP
         /// </summary>
         /// <param name="DT"></param>
-        public void ADD_TKPOSTEMP(DataTable DT)
+        public void ADD_TKPOSTEMP_POSTA(DataTable DT)
         {
             StringBuilder SQL = new StringBuilder();
 
@@ -98,11 +98,97 @@ namespace TKSCHEDULETEMP
 
                 SQL.Clear();
 
-                if (IsLinkedServerAlive(IP, DBNAME))
+                try
                 {
-                    using (SqlConnection conn = new SqlConnection(sqlsb.ConnectionString))
+                    if (IsLinkedServerAlive(IP, DBNAME))
                     {
-                        SQL.AppendFormat(@"
+                        using (SqlConnection conn = new SqlConnection(sqlsb.ConnectionString))
+                        {
+                            SQL.AppendFormat(@"
+                                    SELECT *
+                                    FROM [{0}].[{1}].dbo.POSTA WITH(NOLOCK)
+                                    WHERE TA001 + TA002 + TA003 + TA006  NOT IN 
+                                    (
+                                        SELECT TA001 + TA002 + TA003 + TA006
+                                        FROM [TKPOSTEMP].[dbo].[POSTA]
+                                    )
+                                    AND TA001 >= '20250716'
+                                        ", IP, DBNAME);
+
+                            using (SqlCommand cmd = new SqlCommand(SQL.ToString(), conn))
+                            using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                            {
+                                cmd.CommandTimeout = CommandTimeout; // 查詢 timeout
+                                DataTable dt = new DataTable();
+                                da.Fill(dt);
+
+                                if (dt.Rows.Count > 0)
+                                {
+                                    // Step 3: SqlBulkCopy 進行整批寫入
+                                    using (SqlBulkCopy bulkCopy = new SqlBulkCopy(conn))
+                                    {
+                                        bulkCopy.DestinationTableName = "[TKPOSTEMP].[dbo].[POSTA]";
+                                        bulkCopy.BatchSize = 1000; // 每次一千筆
+                                        bulkCopy.BulkCopyTimeout = BulkCopyTimeout;
+
+                                        // 自動對應欄位（欄位名稱相同會自動對應）
+                                        foreach (DataColumn col in dt.Columns)
+                                        {
+                                            bulkCopy.ColumnMappings.Add(col.ColumnName, col.ColumnName);
+                                        }
+
+                                        conn.Open();
+                                        bulkCopy.WriteToServer(dt);
+                                        conn.Close();
+
+                                        //MessageBox.Show($"成功寫入 {dt.Rows.Count} 筆資料！");
+                                    }
+                                }
+                                else
+                                {
+                                    //MessageBox.Show("無需寫入，無新資料。");
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception EX)
+                {
+                    MessageBox.Show(EX.ToString());
+                }
+                finally
+                { }
+            }
+        }
+
+        /// <summary>
+        /// 新增POSTB資料，到TKPOSTEMP
+        /// </summary>
+        /// <param name="DT"></param>
+        public void ADD_TKPOSTEMP_POSTB(DataTable DT)
+        {
+            StringBuilder SQL = new StringBuilder();
+
+            foreach (DataRow DR in DT.Rows)
+            {
+                string IP = DR["IP"].ToString();
+                string DBNAME = DR["DBNAME"].ToString();
+
+                // 解密連線字串
+                Class1 TKID = new Class1();
+                SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKSCHEDULETEMP"].ConnectionString);
+                sqlsb.Password = TKID.Decryption(sqlsb.Password);
+                sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
+
+                SQL.Clear();
+
+                try
+                {
+                    if (IsLinkedServerAlive(IP, DBNAME))
+                    {
+                        using (SqlConnection conn = new SqlConnection(sqlsb.ConnectionString))
+                        {
+                            SQL.AppendFormat(@"
                                     SELECT *
                                     FROM [{0}].[{1}].dbo.POSTB WITH(NOLOCK)
                                     WHERE TB001 + TB002 + TB003 + TB006 + TB007 NOT IN 
@@ -113,43 +199,132 @@ namespace TKSCHEDULETEMP
                                     AND TB001 >= '20250716'
                                         ", IP, DBNAME);
 
-                        using (SqlCommand cmd = new SqlCommand(SQL.ToString(), conn))
-                        using (SqlDataAdapter da = new SqlDataAdapter(cmd))
-                        {
-                            cmd.CommandTimeout = CommandTimeout; // 查詢 timeout
-                            DataTable dt = new DataTable();
-                            da.Fill(dt);
-
-                            if (dt.Rows.Count > 0)
+                            using (SqlCommand cmd = new SqlCommand(SQL.ToString(), conn))
+                            using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                             {
-                                // Step 3: SqlBulkCopy 進行整批寫入
-                                using (SqlBulkCopy bulkCopy = new SqlBulkCopy(conn))
+                                cmd.CommandTimeout = CommandTimeout; // 查詢 timeout
+                                DataTable dt = new DataTable();
+                                da.Fill(dt);
+
+                                if (dt.Rows.Count > 0)
                                 {
-                                    bulkCopy.DestinationTableName = "[TKPOSTEMP].[dbo].[POSTB]";
-                                    bulkCopy.BatchSize = 1000; // 每次一千筆
-                                    bulkCopy.BulkCopyTimeout = BulkCopyTimeout;
-
-                                    // 自動對應欄位（欄位名稱相同會自動對應）
-                                    foreach (DataColumn col in dt.Columns)
+                                    // Step 3: SqlBulkCopy 進行整批寫入
+                                    using (SqlBulkCopy bulkCopy = new SqlBulkCopy(conn))
                                     {
-                                        bulkCopy.ColumnMappings.Add(col.ColumnName, col.ColumnName);
+                                        bulkCopy.DestinationTableName = "[TKPOSTEMP].[dbo].[POSTB]";
+                                        bulkCopy.BatchSize = 1000; // 每次一千筆
+                                        bulkCopy.BulkCopyTimeout = BulkCopyTimeout;
+
+                                        // 自動對應欄位（欄位名稱相同會自動對應）
+                                        foreach (DataColumn col in dt.Columns)
+                                        {
+                                            bulkCopy.ColumnMappings.Add(col.ColumnName, col.ColumnName);
+                                        }
+
+                                        conn.Open();
+                                        bulkCopy.WriteToServer(dt);
+                                        conn.Close();
+
+                                        //MessageBox.Show($"成功寫入 {dt.Rows.Count} 筆資料！");
                                     }
-
-                                    conn.Open();
-                                    bulkCopy.WriteToServer(dt);
-                                    conn.Close();
-
-                                    //MessageBox.Show($"成功寫入 {dt.Rows.Count} 筆資料！");
                                 }
-                            }
-                            else
-                            {
-                                //MessageBox.Show("無需寫入，無新資料。");
+                                else
+                                {
+                                    //MessageBox.Show("無需寫入，無新資料。");
+                                }
                             }
                         }
                     }
                 }
-                    
+                catch (Exception EX)
+                {
+                    MessageBox.Show(EX.ToString());
+                }
+                finally
+                { }                      
+            }
+        }
+
+        /// <summary>
+        /// 新增POSTC資料，到TKPOSTEMP
+        /// </summary>
+        /// <param name="DT"></param>
+        public void ADD_TKPOSTEMP_POSTC(DataTable DT)
+        {
+            StringBuilder SQL = new StringBuilder();
+
+            foreach (DataRow DR in DT.Rows)
+            {
+                string IP = DR["IP"].ToString();
+                string DBNAME = DR["DBNAME"].ToString();
+
+                // 解密連線字串
+                Class1 TKID = new Class1();
+                SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKSCHEDULETEMP"].ConnectionString);
+                sqlsb.Password = TKID.Decryption(sqlsb.Password);
+                sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
+
+                SQL.Clear();
+                try
+                {
+                    if (IsLinkedServerAlive(IP, DBNAME))
+                    {
+                        using (SqlConnection conn = new SqlConnection(sqlsb.ConnectionString))
+                        {
+                            SQL.AppendFormat(@"
+                                    SELECT *
+                                    FROM [{0}].[{1}].dbo.POSTC WITH(NOLOCK)
+                                    WHERE TC001 + TC002 + TC003 + TC006  NOT IN 
+                                    (
+                                        SELECT TC001 + TC002 + TC003 + TC006
+                                        FROM [TKPOSTEMP].[dbo].[POSTC]
+                                    )
+                                    AND TC001 >= '20250716'
+                                        ", IP, DBNAME);
+
+                            using (SqlCommand cmd = new SqlCommand(SQL.ToString(), conn))
+                            using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                            {
+                                cmd.CommandTimeout = CommandTimeout; // 查詢 timeout
+                                DataTable dt = new DataTable();
+                                da.Fill(dt);
+
+                                if (dt.Rows.Count > 0)
+                                {
+                                    // Step 3: SqlBulkCopy 進行整批寫入
+                                    using (SqlBulkCopy bulkCopy = new SqlBulkCopy(conn))
+                                    {
+                                        bulkCopy.DestinationTableName = "[TKPOSTEMP].[dbo].[POSTC]";
+                                        bulkCopy.BatchSize = 1000; // 每次一千筆
+                                        bulkCopy.BulkCopyTimeout = BulkCopyTimeout;
+
+                                        // 自動對應欄位（欄位名稱相同會自動對應）
+                                        foreach (DataColumn col in dt.Columns)
+                                        {
+                                            bulkCopy.ColumnMappings.Add(col.ColumnName, col.ColumnName);
+                                        }
+
+                                        conn.Open();
+                                        bulkCopy.WriteToServer(dt);
+                                        conn.Close();
+
+                                        //MessageBox.Show($"成功寫入 {dt.Rows.Count} 筆資料！");
+                                    }
+                                }
+                                else
+                                {
+                                    //MessageBox.Show("無需寫入，無新資料。");
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception EX)
+                {
+                    MessageBox.Show(EX.ToString());
+                }
+                finally
+                { }
             }
         }
 
@@ -189,8 +364,10 @@ namespace TKSCHEDULETEMP
         {
             DataTable DT = FIND_POSIP();
             if (DT != null)
-            {               
-                ADD_TKPOSTEMP(DT);
+            {
+                ADD_TKPOSTEMP_POSTA(DT);
+                ADD_TKPOSTEMP_POSTB(DT);
+                ADD_TKPOSTEMP_POSTC(DT);
 
                 MessageBox.Show("完成");
             }

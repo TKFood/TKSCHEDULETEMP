@@ -71,7 +71,7 @@ namespace TKSCHEDULETEMP
                         List<string> IPAddress = GetHostIPAddress();
                         string result = (count == 1) ? "SUCCESS" : "FAIL";
 
-                        ADDTKSYSLOGIN(MethodBase.GetCurrentMethod().DeclaringType.Namespace, txt_UserName.Text.Trim(), IPAddress[0], result);
+                        //ADDTKSYSLOGIN(MethodBase.GetCurrentMethod().DeclaringType.Namespace, txt_UserName.Text.Trim(), IPAddress[0], result);
 
                         if (count == 1)
                         {
@@ -94,67 +94,38 @@ namespace TKSCHEDULETEMP
 
         public void ADDTKSYSLOGIN(string SYSTEMNAME, string USEDID, string USEDIP, string LOGIN)
         {
-            SqlConnection sqlConn = new SqlConnection();
-            SqlTransaction tran;
-            SqlCommand cmd = new SqlCommand();
-            int result;
-            StringBuilder sbSql = new StringBuilder();
-
-
-            //20210902密
-            Class1 TKID = new Class1();//用new 建立類別實體
-            SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKMK"].ConnectionString);
-
-            //資料庫使用者密碼解密
-            sqlsb.Password = TKID.Decryption(sqlsb.Password);
-            sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
-
-            String connectionString;
-            sqlConn = new SqlConnection(sqlsb.ConnectionString);
-
-
-            sqlConn.Close();
-            sqlConn.Open();
-            tran = sqlConn.BeginTransaction();
-
-            sbSql.Clear();
-
-
-
-            sbSql.AppendFormat(@" 
-                                INSERT INTO [TKIT].[dbo].[TKSYSLOGIN]
-                                ([SYSTEMNAME],[USEDDATES],[USEDID],[USEDIP],[LOGIN])
-                                VALUES
-                                (@SYSTEMNAME,@USEDDATES,@USEDID,@USEDIP,@LOGIN)
-                                ");
-
-
-            using (SqlConnection connection = new SqlConnection(sqlsb.ConnectionString))
+            try
             {
-                SqlCommand command = new SqlCommand(sbSql.ToString(), connection);
-                command.Parameters.AddWithValue("@SYSTEMNAME", SYSTEMNAME);
-                command.Parameters.AddWithValue("@USEDDATES", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"));
-                command.Parameters.AddWithValue("@USEDID", USEDID);
-                command.Parameters.AddWithValue("@USEDIP", USEDIP);
-                command.Parameters.AddWithValue("@LOGIN", LOGIN);
-                try
-                {
-                    connection.Open();
-                    Int32 rowsAffected = command.ExecuteNonQuery();
+                // 解密連線字串
+                Class1 TKID = new Class1();
+                SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKMK"].ConnectionString);
+                sqlsb.Password = TKID.Decryption(sqlsb.Password);
+                sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
 
-                }
-                catch (Exception ex)
+                using (SqlConnection conn = new SqlConnection(sqlsb.ConnectionString))
                 {
-                    Console.WriteLine(ex.Message);
-                }
+                    string sql = @"
+                INSERT INTO [TKIT].[dbo].[TKSYSLOGIN]
+                ([SYSTEMNAME], [USEDDATES], [USEDID], [USEDIP], [LOGIN])
+                VALUES (@SYSTEMNAME, @USEDDATES, @USEDID, @USEDIP, @LOGIN)";
 
-                finally
-                {
-                    sqlConn.Close();
+                    using (SqlCommand cmd = new SqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.Add("@SYSTEMNAME", SqlDbType.NVarChar).Value = SYSTEMNAME;
+                        cmd.Parameters.Add("@USEDDATES", SqlDbType.NVarChar).Value = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+                        cmd.Parameters.Add("@USEDID", SqlDbType.NVarChar).Value = USEDID;
+                        cmd.Parameters.Add("@USEDIP", SqlDbType.NVarChar).Value = USEDIP;
+                        cmd.Parameters.Add("@LOGIN", SqlDbType.NVarChar).Value = LOGIN;
+
+                        conn.Open();
+                        cmd.ExecuteNonQuery();
+                    }
                 }
             }
-
-
+            catch (Exception ex)
+            {
+                MessageBox.Show("寫入登入日誌失敗：" + ex.Message);
+            }
         }
 
         // <summary>

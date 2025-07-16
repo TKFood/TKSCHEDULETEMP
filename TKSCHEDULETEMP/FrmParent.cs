@@ -22,11 +22,11 @@ namespace TKSCHEDULETEMP
 {
     public partial class FrmParent : Form
     {
-
         SqlConnection conn;
         MenuStrip MnuStrip;
         ToolStripMenuItem MnuStripItem;
         string UserName;
+        DataTable dt = new DataTable();
 
         public FrmParent()
         {
@@ -56,46 +56,75 @@ namespace TKSCHEDULETEMP
             //conn = new SqlConnection(connectionString);
 
             //20210902密
-            Class1 TKID = new Class1();//用new 建立類別實體
+            //解密連線資訊
+            Class1 TKID = new Class1();
             SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKMK"].ConnectionString);
-
-            //資料庫使用者密碼解密
             sqlsb.Password = TKID.Decryption(sqlsb.Password);
             sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
 
-            String connectionString;
-            conn = new SqlConnection(sqlsb.ConnectionString);
+            using (SqlConnection conn = new SqlConnection(sqlsb.ConnectionString))
+            {
+                string sql = "SELECT MAINMNU, MENUPARVAL, STATUS FROM MNU_PARENT";
 
-
-            String Sequel = "SELECT MAINMNU,MENUPARVAL,STATUS FROM MNU_PARENT";
-            SqlDataAdapter da = new SqlDataAdapter(Sequel, conn);
-            DataTable dt = new DataTable();
-            conn.Open();
-            da.Fill(dt);
+                using (SqlDataAdapter da = new SqlDataAdapter(sql, conn))
+                {                  
+                    conn.Open();
+                    da.Fill(dt);
+                    
+                }
+            }
 
             foreach (DataRow dr in dt.Rows)
             {
                 MnuStripItem = new ToolStripMenuItem(dr["MAINMNU"].ToString());
-                SubMenu(MnuStripItem, dr["MENUPARVAL"].ToString());
+                SubMenu(MnuStripItem, dr["MENUPARVAL"].ToString(), UserName);
                 MnuStrip.Items.Add(MnuStripItem);
             }
             // The Form.MainMenuStrip property determines the merge target.
             this.MainMenuStrip = MnuStrip;
         }
 
-        public void SubMenu(ToolStripMenuItem mnu, string submenu)
+        public void SubMenu(ToolStripMenuItem mnu, string submenuCode, string userName)
         {
-            StringBuilder Seqchild = new StringBuilder();
-            Seqchild.AppendFormat("SELECT FRM_NAME FROM MNU_SUBMENU ,MNU_SUBMENULogin WHERE MNU_SUBMENU.FRM_CODE=MNU_SUBMENULogin.FRM_CODE AND  MNU_SUBMENULogin.UserName='{0}' AND MENUPARVAL='{1}'", UserName.ToString(), submenu.ToString());
-            //Seqchild.AppendFormat( "SELECT FRM_NAME FROM MNU_SUBMENU ,MNU_SUBMENULogin WHERE MNU_SUBMENU.FRM_CODE=MNU_SUBMENULogin.FRM_CODE AND  MNU_SUBMENULogin.UserName='1' AND MENUPARVAL='1'");
-            SqlDataAdapter dachildmnu = new SqlDataAdapter(Seqchild.ToString(), conn);
-            DataTable dtchild = new DataTable();
-            dachildmnu.Fill(dtchild);
-
-            foreach (DataRow dr in dtchild.Rows)
+            try
             {
-                ToolStripMenuItem SSMenu = new ToolStripMenuItem(dr["FRM_NAME"].ToString(), null, new EventHandler(ChildClick));
-                mnu.DropDownItems.Add(SSMenu);
+                // 解密連線資訊
+                Class1 TKID = new Class1();
+                SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKMK"].ConnectionString);
+                sqlsb.Password = TKID.Decryption(sqlsb.Password);
+                sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
+
+                using (SqlConnection conn = new SqlConnection(sqlsb.ConnectionString))
+                {
+                    string sql = @"
+                                SELECT M.FRM_NAME 
+                                FROM MNU_SUBMENU M
+                                JOIN MNU_SUBMENULogin ML ON M.FRM_CODE = ML.FRM_CODE
+                                WHERE ML.UserName = @UserName AND M.MENUPARVAL = @MenuParVal";
+
+                    using (SqlCommand cmd = new SqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.Add("@UserName", SqlDbType.NVarChar).Value = userName;
+                        cmd.Parameters.Add("@MenuParVal", SqlDbType.NVarChar).Value = submenuCode;
+
+                        using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                        {
+                            DataTable dt = new DataTable();
+                            da.Fill(dt);
+
+                            foreach (DataRow dr in dt.Rows)
+                            {
+                                string frmName = dr["FRM_NAME"].ToString();
+                                ToolStripMenuItem subItem = new ToolStripMenuItem(frmName, null, new EventHandler(ChildClick));
+                                mnu.DropDownItems.Add(subItem);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("載入子選單失敗：" + ex.Message);
             }
         }
 

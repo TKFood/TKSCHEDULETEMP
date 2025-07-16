@@ -58,7 +58,7 @@ namespace TKSCHEDULETEMP
             //20210902密
             //解密連線資訊
             Class1 TKID = new Class1();
-            SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKMK"].ConnectionString);
+            SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKSCHEDULETEMP"].ConnectionString);
             sqlsb.Password = TKID.Decryption(sqlsb.Password);
             sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
 
@@ -90,7 +90,7 @@ namespace TKSCHEDULETEMP
             {
                 // 解密連線資訊
                 Class1 TKID = new Class1();
-                SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKMK"].ConnectionString);
+                SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKSCHEDULETEMP"].ConnectionString);
                 sqlsb.Password = TKID.Decryption(sqlsb.Password);
                 sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
 
@@ -130,48 +130,55 @@ namespace TKSCHEDULETEMP
 
         private void ChildClick(object sender, EventArgs e)
         {
-            // MessageBox.Show(string.Concat("You have Clicked ", sender.ToString(), " Menu"), "Menu Items Event",MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // 解密連線資訊
+            Class1 TKID = new Class1();
+            SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKSCHEDULETEMP"].ConnectionString);
+            sqlsb.Password = TKID.Decryption(sqlsb.Password);
+            sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
 
-            String Seqtx = "SELECT FRM_CODE FROM MNU_SUBMENU WHERE FRM_NAME='" + sender.ToString() + "'";
-            SqlDataAdapter datransaction = new SqlDataAdapter(Seqtx, conn);
-            DataTable dtransaction = new DataTable();
-            datransaction.Fill(dtransaction);
-            //ADD USED LOG
-            List<string> IPAddress = GetHostIPAddress();
-            //MessageBox.Show(IPAddress[0].ToString());            
-            TKSYSPRUSED(MethodBase.GetCurrentMethod().DeclaringType.Namespace, dtransaction.Rows[0]["FRM_CODE"].ToString(), sender.ToString(), UserName, IPAddress[0].ToString());
-
-
-            Assembly frmAssembly = Assembly.LoadFile(Application.ExecutablePath);
-            foreach (Type type in frmAssembly.GetTypes())
+            using (SqlConnection conn = new SqlConnection(sqlsb.ConnectionString))
             {
-                //MessageBox.Show(type.Name);
-                if (type.BaseType == typeof(Form))
+                String Seqtx = "SELECT FRM_CODE FROM MNU_SUBMENU WHERE FRM_NAME='" + sender.ToString() + "'";
+                SqlDataAdapter datransaction = new SqlDataAdapter(Seqtx, conn);
+                DataTable dtransaction = new DataTable();
+                datransaction.Fill(dtransaction);
+                //ADD USED LOG
+                List<string> IPAddress = GetHostIPAddress();
+                //MessageBox.Show(IPAddress[0].ToString());            
+                //TKSYSPRUSED(MethodBase.GetCurrentMethod().DeclaringType.Namespace, dtransaction.Rows[0]["FRM_CODE"].ToString(), sender.ToString(), UserName, IPAddress[0].ToString());
+
+
+                Assembly frmAssembly = Assembly.LoadFile(Application.ExecutablePath);
+                foreach (Type type in frmAssembly.GetTypes())
                 {
-                    if (type.Name == dtransaction.Rows[0][0].ToString())
+                    //MessageBox.Show(type.Name);
+                    if (type.BaseType == typeof(Form))
                     {
-                        Form frmShow = (Form)frmAssembly.CreateInstance(type.ToString());
-                        // then when you want to close all of them simple call the below code
-
-                        foreach (Form form in this.MdiChildren)
+                        if (type.Name == dtransaction.Rows[0][0].ToString())
                         {
-                            //form.Close();
-                            //如果子視窗已經存在
-                            if (form.Name == frmShow.Name)
-                            {
-                                //將該子視窗設為焦點
-                                form.Focus();
-                                return;
-                            }
-                        }
+                            Form frmShow = (Form)frmAssembly.CreateInstance(type.ToString());
+                            // then when you want to close all of them simple call the below code
 
-                        frmShow.MdiParent = this;
-                        frmShow.WindowState = FormWindowState.Maximized;
-                        //frmShow.ControlBox = false;
-                        frmShow.Show();
+                            foreach (Form form in this.MdiChildren)
+                            {
+                                //form.Close();
+                                //如果子視窗已經存在
+                                if (form.Name == frmShow.Name)
+                                {
+                                    //將該子視窗設為焦點
+                                    form.Focus();
+                                    return;
+                                }
+                            }
+
+                            frmShow.MdiParent = this;
+                            frmShow.WindowState = FormWindowState.Maximized;
+                            //frmShow.ControlBox = false;
+                            frmShow.Show();
+                        }
                     }
                 }
-            }
+            }                
         }
 
         private void FrmParent_FormClosed(object sender, FormClosedEventArgs e)
@@ -190,7 +197,7 @@ namespace TKSCHEDULETEMP
             {
                 // 解密連線字串
                 Class1 TKID = new Class1();
-                SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKMK"].ConnectionString);
+                SqlConnectionStringBuilder sqlsb = new SqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["dbTKSCHEDULETEMP"].ConnectionString);
                 sqlsb.Password = TKID.Decryption(sqlsb.Password);
                 sqlsb.UserID = TKID.Decryption(sqlsb.UserID);
 

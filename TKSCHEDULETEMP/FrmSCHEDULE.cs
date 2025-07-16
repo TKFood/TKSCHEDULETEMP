@@ -34,7 +34,34 @@ namespace TKSCHEDULETEMP
         #region FUNCTION
         private void FrmSCHEDULE_Load(object sender, EventArgs e)
         {
+            timer1.Enabled = true;
+            timer1.Interval = 1000 * 60; // 1 分鐘
+            timer1.Start();
+        }
 
+        /// <summary>
+        /// 定期執行
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            //每分鐘執行1次
+
+            //轉入POS資料到TKPOSTEMP
+            try
+            {
+                DataTable DT = FIND_POSIP();
+                if (DT != null)
+                {
+                    ADD_TKPOSTEMP_POSTA(DT);
+                    ADD_TKPOSTEMP_POSTB(DT);
+                    ADD_TKPOSTEMP_POSTC(DT);
+
+                    //MessageBox.Show("完成");
+                }
+            }
+            catch { }
         }
 
         public DataTable FIND_POSIP()
@@ -376,8 +403,9 @@ namespace TKSCHEDULETEMP
                 MessageBox.Show("查無資料或查詢失敗");
             }
         }
+
         #endregion
 
-      
+     
     }
 }

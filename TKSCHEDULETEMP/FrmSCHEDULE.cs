@@ -137,7 +137,7 @@ namespace TKSCHEDULETEMP
                                     WHERE TA001 + TA002 + TA003 + TA006  NOT IN 
                                     (
                                         SELECT TA001 + TA002 + TA003 + TA006
-                                        FROM [TKPOSTEMP].[dbo].[POSTA]
+                                        FROM [TKPOSTEMP].[dbo].[POSTA] WITH(NOLOCK)
                                     )
                                     AND TA001 >= '20250716'
                                         ", IP, DBNAME);
@@ -221,7 +221,7 @@ namespace TKSCHEDULETEMP
                                     WHERE TB001 + TB002 + TB003 + TB006 + TB007 NOT IN 
                                     (
                                         SELECT TB001 + TB002 + TB003 + TB006 + TB007 
-                                        FROM [TKPOSTEMP].[dbo].[POSTB]
+                                        FROM [TKPOSTEMP].[dbo].[POSTB] WITH(NOLOCK)
                                     )
                                     AND TB001 >= '20250716'
                                         ", IP, DBNAME);
@@ -304,7 +304,7 @@ namespace TKSCHEDULETEMP
                                     WHERE TC001 + TC002 + TC003 + TC006  NOT IN 
                                     (
                                         SELECT TC001 + TC002 + TC003 + TC006
-                                        FROM [TKPOSTEMP].[dbo].[POSTC]
+                                        FROM [TKPOSTEMP].[dbo].[POSTC] WITH(NOLOCK)
                                     )
                                     AND TC001 >= '20250716'
                                         ", IP, DBNAME);
